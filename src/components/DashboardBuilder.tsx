@@ -25,6 +25,7 @@ import { KpiCardWidget } from "./widgets/KpiCardWidget";
 import { BarChartWidget } from "./widgets/BarChartWidget";
 import { Input } from "./ui";
 import { useDashboardBuilder } from "@/hooks/useDashboardBuilder";
+import { PieChartWidget } from "./widgets/PieChartWidget";
 
 const ResponsiveGridLayout = WidthProvider(RGL);
 
@@ -62,6 +63,8 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
     setNewWidgetColumn,
     newWidgetTitle,
     setNewWidgetTitle,
+    newKpiOperation,
+    setNewKpiOperation,
     headers,
     handleAddWidget,
     handleRemoveWidget,
@@ -129,9 +132,40 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
                       <SelectItem value="bar-chart">
                         Gráfico de Barras (Contagem)
                       </SelectItem>
+                      <SelectItem value="pie-chart">
+                        Gráfico de Pizza
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* NOVO: Menu de seleção condicional para o tipo de cálculo */}
+                {newWidgetType === "kpi" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="kpi-operation" className="text-right">
+                      Cálculo
+                    </Label>
+                    <Select
+                      value={newKpiOperation}
+                      onValueChange={(value: any) => setNewKpiOperation(value)}
+                    >
+                      <SelectTrigger className="col-span-3 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="count">
+                          Contagem Total (Linhas)
+                        </SelectItem>
+                        <SelectItem value="unique">
+                          Contagem de Únicos
+                        </SelectItem>
+                        <SelectItem value="sum">
+                          Soma (para colunas numéricas)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="widget-column" className="text-right">
@@ -177,21 +211,34 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
             key={widget.id}
             data-grid={{ x: widget.x, y: widget.y, w: widget.w, h: widget.h }}
           >
-            {widget.type === "kpi" && widget.kpiColumn && (
-              <KpiCardWidget
-                title={widget.title}
-                data={data}
-                column={widget.kpiColumn}
-                operation="count"
-              />
-            )}
-            {widget.type === "bar-chart" && widget.barChartCategory && (
+            {widget.type === "kpi" &&
+              widget.kpiColumn &&
+              widget.kpiOperation && (
+                <KpiCardWidget
+                  title={widget.title}
+                  data={data}
+                  column={widget.kpiColumn}
+                  operation={widget.kpiOperation}
+                  onRemove={handleRemoveWidget}
+                  widgetId={widget.id}
+                />
+              )}
+            {widget.type === "bar-chart" && widget.categoryColumn && (
               <BarChartWidget
                 title={widget.title}
                 data={data}
-                category={widget.barChartCategory}
+                category={widget.categoryColumn}
                 onRemove={handleRemoveWidget}
                 widgetId={widget.id}
+              />
+            )}
+            {widget.type === "pie-chart" && widget.categoryColumn && (
+              <PieChartWidget
+                widgetId={widget.id}
+                onRemove={handleRemoveWidget}
+                title={widget.title}
+                data={data}
+                category={widget.categoryColumn}
               />
             )}
           </div>

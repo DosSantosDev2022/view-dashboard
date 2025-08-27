@@ -4,19 +4,18 @@ import { useState } from 'react';
 import RGL from "react-grid-layout";
 import { toast } from 'sonner';
 import { useDataStore } from '@/store/data-store'; 
+import { KpiOperation } from '@/components/widgets/KpiCardWidget';
 // Reexportando o tipo para ser usado no componente
 export type { Layout } from 'react-grid-layout';
-
-
 
 export type WidgetConfig = {
   id: string;
   title: string;
-  type: 'kpi' | 'bar-chart';
+  type: 'kpi' | 'bar-chart' | 'pie-chart';
   x: number; y: number; w: number; h: number;
   kpiColumn?: string;
-  kpiOperation?: 'count' | 'sum';
-  barChartCategory?: string;
+  kpiOperation?: KpiOperation;
+  categoryColumn?: string;
 };
 
 interface UseDashboardBuilderProps {
@@ -29,10 +28,10 @@ export function useDashboardBuilder({ data }: UseDashboardBuilderProps) {
   // 1. Toda a lógica de estado vem para cá
   const { widgets, setWidgets } = useDataStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newWidgetType, setNewWidgetType] = useState<'kpi' | 'bar-chart' | ''>('');
+  const [newWidgetType, setNewWidgetType] = useState<'kpi' | 'bar-chart' | 'pie-chart' | ''>('');
   const [newWidgetColumn, setNewWidgetColumn] = useState('');
   const [newWidgetTitle, setNewWidgetTitle] = useState('');
-
+  const [newKpiOperation, setNewKpiOperation] = useState<KpiOperation>('count');
   const headers = Object.keys(data[0] || {});
 
   // 2. Todas as funções de manipulação vêm para cá
@@ -43,17 +42,17 @@ export function useDashboardBuilder({ data }: UseDashboardBuilderProps) {
       return;
     }
 
-    const newWidget: WidgetConfig = {
+     const newWidget: WidgetConfig = {
       id: `widget_${Date.now()}`,
       type: newWidgetType,
-      title: newWidgetTitle, // Usa o título personalizado
-      x: (widgets.length * 2) % 12,
+      title: newWidgetTitle,
+      x: (widgets.length * 4) % 12,
       y: Infinity,
-      w: newWidgetType === 'bar-chart' ? 6 : 3, // Ajuste de tamanho
-      h: newWidgetType === 'bar-chart' ? 2 : 1, // Ajuste de tamanho
+      w: newWidgetType === 'bar-chart' ? 6 : (newWidgetType === 'pie-chart' ? 4 : 3), // Tamanho padrão
+      h: 2, // Altura padrão para gráficos
       kpiColumn: newWidgetColumn,
-      kpiOperation: 'count',
-      barChartCategory: newWidgetColumn,
+      kpiOperation: newKpiOperation,
+      categoryColumn: newWidgetColumn,
     };
     
     setWidgets([...widgets, newWidget]);
@@ -62,7 +61,8 @@ export function useDashboardBuilder({ data }: UseDashboardBuilderProps) {
     setIsDialogOpen(false);
     setNewWidgetType('');
     setNewWidgetColumn('');
-    setNewWidgetTitle(''); // Limpa o estado do título
+    setNewWidgetTitle('');
+    setNewKpiOperation('count');
   };
 
   const handleRemoveWidget = (widgetId: string) => {
@@ -95,6 +95,8 @@ export function useDashboardBuilder({ data }: UseDashboardBuilderProps) {
     setNewWidgetColumn,
     newWidgetTitle,
     setNewWidgetTitle,
+    newKpiOperation,
+    setNewKpiOperation,
     headers,
     handleAddWidget,
     handleRemoveWidget,

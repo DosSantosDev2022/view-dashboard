@@ -25,7 +25,7 @@ export function useCreateTable() {
   const [editingRowData, setEditingRowData] = useState<DataRow | null>(null)
   
   // Dependências externas também são gerenciadas aqui dentro
-  const setData = useDataStore((state) => state.setData);
+  const setData = useDataStore((state) => state.setProcessedData);
   const router = useRouter();
 
   // 2. Todas as funções de lógica são movidas para cá
@@ -135,7 +135,7 @@ export function useCreateTable() {
     handleNewRowChange,
     addRow,
     finalizeAndCreateDashboard,
-     editingRowData,
+    editingRowData,
     startEditing,
     handleEditRowChange,
     saveEditedRow,
