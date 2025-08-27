@@ -1,17 +1,30 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware'; // 1. Importamos as ferramentas de persistência
+import { WidgetConfig } from '@/hooks/useDashboardBuilder'; // Importamos o tipo que já temos
 
-// Definindo os tipos para o nosso estado
 type DataRow = { [key: string]: any };
 
 interface DataState {
-  data: DataRow[];
-  setData: (newData: DataRow[]) => void;
-  clearData: () => void;
+  processedData: DataRow[];
+  setProcessedData: (data: DataRow[]) => void;
+  widgets: WidgetConfig[]; // 2. Adicionamos o estado dos widgets aqui
+  setWidgets: (widgets: WidgetConfig[]) => void; // E a função para atualizá-los
+  clearSession: () => void; // Renomeamos 'clearData' para ser mais claro
 }
 
-// Criando o store com o estado inicial e as "ações" (funções para modificar o estado)
-export const useDataStore = create<DataState>((set) => ({
-  data: [],
-  setData: (newData) => set({ data: newData }),
-  clearData: () => set({ data: [] }),
-}));
+// 3. Envolvemos nossa criação de store com o middleware 'persist'
+export const useDataStore = create(
+  persist<DataState>(
+    (set) => ({
+      processedData: [],
+      setProcessedData: (data) => set({ processedData: data }),
+      widgets: [],
+      setWidgets: (widgets) => set({ widgets: widgets }),
+      clearSession: () => set({ processedData: [], widgets: [] }),
+    }),
+    {
+      name: 'dashboard-session-storage', // Nome da "chave" no sessionStorage
+      storage: createJSONStorage(() => sessionStorage), // Define o sessionStorage como local de armazenamento
+    }
+  )
+);

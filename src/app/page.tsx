@@ -58,7 +58,7 @@ export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  const setProcessedData = useDataStore((state) => state.setData);
+  const setProcessedData = useDataStore((state) => state.setProcessedData);
   const router = useRouter();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +115,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-50">
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="text-center mb-10">
         <h1 className="text-4xl font-bold tracking-tight">Visualizador de Dashboard</h1>
         <p className="text-lg text-muted-foreground mt-2">Comece a dar vida aos seus dados.</p>

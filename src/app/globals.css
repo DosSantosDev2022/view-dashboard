@@ -120,3 +120,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Estilos para a barra de rolagem no modo light */
+.scrollbar-custom::-webkit-scrollbar {
+	width: 6px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+	background-color: var(--color-secondary);
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+	background-color: var(--color-secondary-foreground);
+	border-radius: 6px;
+}
+
+/* Estilos para a barra de rolagem no modo dark */
+.dark .scrollbar-custom::-webkit-scrollbar {
+	width: 6px;
+}
+
+.dark .scrollbar-custom::-webkit-scrollbar-track {
+	background-color: var(--color-secondary); /* Cor de fundo escura */
+}
+
+.dark .scrollbar-custom::-webkit-scrollbar-thumb {
+	background-color: var(--color-secondary-foreground); /* Cor do polegar clara */
+	border-radius: 6px;
+}

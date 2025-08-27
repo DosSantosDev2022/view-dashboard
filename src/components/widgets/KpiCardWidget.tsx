@@ -38,16 +38,8 @@ export function KpiCardWidget({ title, data, column, operation }: KpiCardWidgetP
   }, [data, column, operation]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-4xl font-bold">
-          {/* Formata o número para o padrão brasileiro */}
-          {calculatedValue.toLocaleString('pt-BR')}
-        </p>
-      </CardContent>
-    </Card>
+    <div className="text-4xl font-bold pt-2">
+      {calculatedValue.toLocaleString('pt-BR')}
+    </div>
   );
 }

@@ -1,46 +1,49 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDataStore } from '@/store/data-store'; // 1. Importa o hook do store
 import { DashboardBuilder } from '@/components/DashboardBuilder';
-import Link from 'next/link';
-import { Button } from '@/components/ui';
+import { LoaderCircle } from 'lucide-react';
+import { ActionsButtons } from '@/components/global/action-buttons';
 
 export default function DashboardPage() {
-  // 2. Pega os dados e as ações do store
-  const data = useDataStore((state) => state.data);
-  const clearData = useDataStore((state) => state.clearData);
-  const router = useRouter();
+  const { processedData, clearSession } = useDataStore();
+  const router = useRouter(); 
+  // 1. Estado para controlar se o componente foi "hidratado"
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // 2. useEffect para rodar apenas no cliente
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
-    if (data.length === 0) {
+    // Essa verificação agora só roda após a hidratação
+    if (isHydrated && processedData.length === 0) {
       router.push('/');
     }
-  }, [data, router]);
+  }, [processedData, isHydrated, router]);
 
-  const handleReset = () => {
-    clearData(); // 3. Usa a nova ação para limpar o estado
-    router.push('/');
-  }
-
-  if (data.length === 0) {
-    return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
+  // 3. Mostra um carregamento enquanto o estado não for recuperado do sessionStorage
+  if (!isHydrated || processedData.length === 0) {
+    return <div className="flex min-h-screen items-center justify-center">
+        <span className='flex items-center justify-center gap-3'>
+          <LoaderCircle className='animate-spin duration-500' />
+          Carregando...
+        </span>
+      </div>;
   }
 
   return (
     <div>
-      <header className="bg-white shadow-sm">
+      <header className="bg-background shadow-sm">
         <nav className="container mx-auto p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Seu Dashboard</h1>
-          <div className="flex gap-4">
-            <Button variant="ghost" asChild><Link href="/dashboard">Dashboard</Link></Button>
-            <Button variant="ghost" asChild><Link href="/table">Tabela de Dados</Link></Button>
-            <Button variant="destructive" onClick={handleReset}>Encerrar Sessão</Button>
-          </div>
+          <ActionsButtons />
         </nav>
       </header>
-      <DashboardBuilder data={data} onReset={clearData} />
+      <DashboardBuilder data={processedData} />
     </div>
   );
 }

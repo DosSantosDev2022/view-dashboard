@@ -1,46 +1,62 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDataStore } from '@/store/data-store'; // 1. Importa o hook do store
-import Link from 'next/link';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle ,Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
-
-type DataRow = { [key: string]: any };
+import { useDataStore } from '@/store/data-store';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { LoaderCircle } from 'lucide-react';
+import { ActionsButtons } from '@/components/global/action-buttons';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 export default function TablePage() {
-  // 2. Pega os dados e as ações do store
-  const data = useDataStore((state) => state.data);
-  const clearData = useDataStore((state) => state.clearData);
+ const { processedData: data, clearSession } = useDataStore();
   const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => { setIsHydrated(true); }, []);
 
   useEffect(() => {
-    if (data.length === 0) {
+    if (isHydrated && (!data || data.length === 0)) {
       router.push('/');
     }
-  }, [data, router]);
+  }, [data, isHydrated, router]);
 
   const handleReset = () => {
-    clearData(); // 3. Usa a nova ação para limpar o estado
+    clearSession();
     router.push('/');
-  }
+  };
 
-  if (data.length === 0) {
-    return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // A configuração do virtualizer permanece a mesma
+  const rowVirtualizer = useVirtualizer({
+    count: data.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 41,
+    overscan: 5,
+  });
+
+  if (!isHydrated || !data || data.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className='flex items-center justify-center gap-3'>
+          <LoaderCircle className='animate-spin' />
+          Carregando Sessão...
+        </span>
+      </div>
+    );
   }
 
   const headers = Object.keys(data[0] || {});
+  const virtualItems = rowVirtualizer.getVirtualItems();
 
   return (
     <div>
-      <header className="bg-white shadow-sm">
+      <header className="bg-background border-b shadow-sm">
         <nav className="container mx-auto p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Dados Brutos</h1>
-          <div className="flex gap-4">
-            <Button variant="ghost" asChild><Link href="/dashboard">Dashboard</Link></Button>
-            <Button variant="ghost" asChild><Link href="/table">Tabela de Dados</Link></Button>
-            <Button variant="destructive" onClick={handleReset}>Encerrar Sessão</Button>
-          </div>
+          <ActionsButtons />
         </nav>
       </header>
       
@@ -48,29 +64,48 @@ export default function TablePage() {
         <Card>
           <CardHeader>
             <CardTitle>Dados Carregados</CardTitle>
-            <CardDescription>Esta é a tabela com os dados brutos do seu arquivo.</CardDescription>
+            <CardDescription>Exibindo {data.length.toLocaleString('pt-BR')} linhas.</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="overflow-auto max-h-[70vh]">
+             <div ref={parentRef} className="overflow-auto max-h-[70vh] border rounded-md scrollbar-custom">
+              {/* Usamos os componentes <Table> do shadcn/ui normalmente */}
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {headers.map((header) => (<TableHead key={header}>{header}</TableHead>))}
+                    {headers.map((header) => (<TableHead key={header} className="sticky top-0 bg-primary text-primary-foreground dark:text-foreground dark:bg-card">{header}</TableHead>))}
                   </TableRow>
                 </TableHeader>
+                
+                {/* ========================================================= */}
+                {/* A NOVA LÓGICA DE VIRTUALIZAÇÃO ESTÁ AQUI */}
+                {/* ========================================================= */}
                 <TableBody>
-                  {data.map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      {headers.map((header) => (
-                        <TableCell key={`${header}-${rowIndex}`}>
-                          {row[header] instanceof Date
-                              ? row[header].toLocaleString('pt-BR', { timeZone: 'UTC' })
-                              : String(row[header] ?? '')}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
+                  {/* 1. Linha "fantasma" de preenchimento superior */}
+                  {virtualItems.length > 0 && (
+                    <TableRow style={{ height: `${virtualItems[0].start}px` }} />
+                  )}
+
+                  {/* 2. Renderiza apenas as linhas visíveis */}
+                  {virtualItems.map((virtualItem) => {
+                    const row = data[virtualItem.index];
+                    return (
+                      <TableRow key={virtualItem.key}>
+                        {headers.map((header) => (
+                          <TableCell key={`${header}-${virtualItem.index}`}>
+                            {row[header] instanceof Date
+                                ? row[header].toLocaleString('pt-BR', { timeZone: 'UTC' })
+                                : String(row[header] ?? '')}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+                  
+                  {/* 3. Linha "fantasma" de preenchimento inferior */}
+                  {virtualItems.length > 0 && (
+                     <TableRow style={{ height: `${rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end}px` }} />
+                  )}
+              </TableBody>
               </Table>
             </div>
           </CardContent>
