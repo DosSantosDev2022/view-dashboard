@@ -1,62 +1,42 @@
 "use client";
-import RGL, { WidthProvider } from "react-grid-layout";
+
+// ALTERADO: Renomeado 'RGL' para um nome completo
+import ReactGridLayoutLibrary, { WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Importando nossos componentes de widget
+// Imports de Ícones
+import { Filter } from "lucide-react";
+
+// Imports dos Nossos Componentes e Hooks
+import { useDashboardBuilder, WidgetConfiguration } from "@/hooks/useDashboardBuilder";
 import { KpiCardWidget } from "./widgets/KpiCardWidget";
 import { BarChartWidget } from "./widgets/BarChartWidget";
-import { Input } from "./ui";
-import { useDashboardBuilder } from "@/hooks/useDashboardBuilder";
 import { PieChartWidget } from "./widgets/PieChartWidget";
+import { headers } from "next/headers";
+import { Input } from "./ui";
 
-const ResponsiveGridLayout = WidthProvider(RGL);
+// ALTERADO: A constante agora usa o nome completo da biblioteca
+const ResponsiveGridLayout = WidthProvider(ReactGridLayoutLibrary);
 
+// Tipos de dados
 type DataRow = { [key: string]: any };
 
-// Definindo a "receita" de um widget
-export type WidgetConfig = {
-  id: string; // Renomeado de 'i' para 'id' para manter consistência
-  title: string;
-  type: "kpi" | "bar-chart";
-  // Layout props
-  x: number;
-  y: number;
-  w: number; // width em unidades de grade
-  h: number; // height em unidades de grade
-  // Props específicas
-  kpiColumn?: string;
-  kpiOperation?: "count" | "sum";
-  barChartCategory?: string;
-};
-
-interface DashboardBuilderProps {
+interface DashboardBuilderParameters {
   data: DataRow[];
-  /* onReset: () => void; */
 }
 
-export function DashboardBuilder({ data }: DashboardBuilderProps) {
+export function DashboardBuilder({ data }: DashboardBuilderParameters) {
+  // Desestruturando o hook com os nomes de variáveis completos
   const {
     widgets,
-    isDialogOpen,
-    setIsDialogOpen,
+    isCreationDialogOpen,
+    setIsCreationDialogOpen,
     newWidgetType,
     setNewWidgetType,
     newWidgetColumn,
@@ -65,33 +45,75 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
     setNewWidgetTitle,
     newKpiOperation,
     setNewKpiOperation,
-    headers,
+    availableColumnHeaders,
     handleAddWidget,
     handleRemoveWidget,
-    onLayoutChange,
+    handleLayoutChange,
+    globalFilterColumn,
+    setGlobalFilterColumn,
+    globalFilterValue,
+    setGlobalFilterValue,
+    uniqueGlobalColumnValues,
+    filteredData,
+    filterableColumns,
+    toggleFilterableColumn,
   } = useDashboardBuilder({ data });
 
-  // Convertendo nosso estado de widgets para o formato que a biblioteca precisa
-  const layout = widgets.map((w) => ({
-    i: w.id,
-    x: w.x,
-    y: w.y,
-    w: w.w,
-    h: w.h,
+  // Convertendo nosso estado de widgets para o formato que a biblioteca de grid precisa
+  // Mapeamos nossos nomes descritivos (positionX) para os nomes curtos que a biblioteca espera (x)
+  const gridLayout = widgets.map((widget) => ({
+    i: widget.id,
+    x: widget.positionX,
+    y: widget.positionY,
+    w: widget.width,
+    h: widget.height,
   }));
 
   return (
     <main className="container mx-auto p-8">
-      <div className="flex justify-between items-center mb-6">
+      <header className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Construtor de Dashboard</h1>
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             Adicione e organize os componentes para visualizar seus dados.
           </p>
         </div>
+
         <div className="flex gap-2">
-          {/* Botão para abrir o Dialog de Adicionar Componente */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          {/* Botão e Dialog para configurar quais colunas são filtros */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Configurar Filtros
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Selecionar Colunas para Filtragem</DialogTitle>
+                <p className="text-sm text-muted-foreground pt-1">
+                  Marque as colunas que poderão ser usadas nos filtros globais.
+                </p>
+              </DialogHeader>
+              <div className="grid gap-4 py-4 max-h-96 overflow-y-auto">
+                {availableColumnHeaders.map((header) => (
+                  <div key={header} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`checkbox-${header}`}
+                      checked={filterableColumns.includes(header)}
+                      onCheckedChange={() => toggleFilterableColumn(header)}
+                    />
+                    <Label htmlFor={`checkbox-${header}`} className="cursor-pointer">
+                      {header}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Botão e Dialog para adicionar um novo componente */}
+          <Dialog open={isCreationDialogOpen} onOpenChange={setIsCreationDialogOpen}>
             <DialogTrigger asChild>
               <Button>Adicionar Componente</Button>
             </DialogTrigger>
@@ -99,6 +121,7 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
               <DialogHeader>
                 <DialogTitle>Configurar Novo Componente</DialogTitle>
               </DialogHeader>
+              {/* Formulário de criação de widget */}
               <div className="grid gap-4 py-4">
                 {/* 3. NOVO: Campo para o Título do Componente */}
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -179,7 +202,7 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
                       <SelectValue placeholder="Selecione a coluna" />
                     </SelectTrigger>
                     <SelectContent>
-                      {headers.map((header) => (
+                      {availableColumnHeaders.map((header) => (
                         <SelectItem key={header} value={header}>
                           {header}
                         </SelectItem>
@@ -194,51 +217,109 @@ export function DashboardBuilder({ data }: DashboardBuilderProps) {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </header>
 
-      {/* Área onde os widgets do dashboard são renderizados com Drag-and-Drop */}
+      {/* Seção de Filtros Globais */}
+      <section className="flex items-center gap-4 p-4 mb-6 border rounded-lg bg-card">
+        <h3 className="text-lg font-semibold whitespace-nowrap">Filtros</h3>
+        
+        {/* Seletor da Coluna de Filtro */}
+        <div className="flex-1 min-w-[200px]">
+          <Select 
+            value={globalFilterColumn} 
+            onValueChange={setGlobalFilterColumn}
+            disabled={filterableColumns.length === 0}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={
+                  filterableColumns.length === 0 
+                  ? "Configure as colunas de filtro" 
+                  : "Filtrar por Coluna"
+                } />
+            </SelectTrigger>
+            <SelectContent>
+              {filterableColumns.map((columnHeader) => (
+                <SelectItem key={columnHeader} value={columnHeader}>{columnHeader}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Seletor do Valor de Filtro */}
+        {globalFilterColumn && (
+          <div className="flex-1 min-w-[200px]">
+            <Select value={globalFilterValue} onValueChange={setGlobalFilterValue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o Valor" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueGlobalColumnValues.map((value) => (
+                  <SelectItem key={String(value)} value={String(value)}>
+                    {String(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Botão para Limpar Filtro */}
+        <Button 
+          variant="ghost" 
+          onClick={() => setGlobalFilterColumn("")}
+          disabled={!globalFilterColumn}
+        >
+          Limpar Filtro
+        </Button>
+      </section>
+
+      {/* Área de Renderização dos Widgets */}
       <ResponsiveGridLayout
         className="layout"
-        layout={layout}
-        onLayoutChange={onLayoutChange}
-        cols={12} // A grade tem 12 colunas
-        rowHeight={150} // Altura de cada linha em pixels
+        layout={gridLayout}
+        onLayoutChange={handleLayoutChange}
+        cols={12}
+        rowHeight={150}
         isDraggable
         isResizable
       >
-        {widgets.map((widget) => (
+        {widgets.map((widgetConfiguration) => (
           <div
-            key={widget.id}
-            data-grid={{ x: widget.x, y: widget.y, w: widget.w, h: widget.h }}
+            key={widgetConfiguration.id}
+            data-grid={{ 
+              x: widgetConfiguration.positionX, 
+              y: widgetConfiguration.positionY, 
+              w: widgetConfiguration.width, 
+              h: widgetConfiguration.height 
+            }}
           >
-            {widget.type === "kpi" &&
-              widget.kpiColumn &&
-              widget.kpiOperation && (
-                <KpiCardWidget
-                  title={widget.title}
-                  data={data}
-                  column={widget.kpiColumn}
-                  operation={widget.kpiOperation}
-                  onRemove={handleRemoveWidget}
-                  widgetId={widget.id}
-                />
-              )}
-            {widget.type === "bar-chart" && widget.categoryColumn && (
-              <BarChartWidget
-                title={widget.title}
-                data={data}
-                category={widget.categoryColumn}
+            {/* Renderização condicional dos widgets */}
+            {widgetConfiguration.type === "kpi" && (
+              <KpiCardWidget
+                title={widgetConfiguration.title}
+                data={filteredData}
+                column={widgetConfiguration.kpiColumn!}
+                operation={widgetConfiguration.kpiOperation!}
                 onRemove={handleRemoveWidget}
-                widgetId={widget.id}
+                widgetId={widgetConfiguration.id}
               />
             )}
-            {widget.type === "pie-chart" && widget.categoryColumn && (
-              <PieChartWidget
-                widgetId={widget.id}
+            {widgetConfiguration.type === "bar-chart" && (
+              <BarChartWidget
+                title={widgetConfiguration.title}
+                data={filteredData}
+                category={widgetConfiguration.categoryColumn!}
                 onRemove={handleRemoveWidget}
-                title={widget.title}
-                data={data}
-                category={widget.categoryColumn}
+                widgetId={widgetConfiguration.id}
+              />
+            )}
+            {widgetConfiguration.type === "pie-chart" && (
+              <PieChartWidget
+                title={widgetConfiguration.title}
+                data={filteredData}
+                category={widgetConfiguration.categoryColumn!}
+                onRemove={handleRemoveWidget}
+                widgetId={widgetConfiguration.id}
               />
             )}
           </div>
